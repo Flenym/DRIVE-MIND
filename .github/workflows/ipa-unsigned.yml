@@ -1,5 +1,5 @@
 name: IPA Unsigned
-# Собирает НЕПОДПИСАННЫЙ .ipa (CODE_SIGNING_ALLOWED=NO) — ставится через AltStore/SideStore/Sideloadly/Xcode.
+# Неподписанный .ipa — ставится через AltStore / SideStore / Sideloadly / Xcode Devices
 # Автор: Flenym
 on:
   workflow_dispatch:
@@ -13,60 +13,54 @@ permissions:
 jobs:
   swiftui-unsigned:
     name: SwiftUI IPA (unsigned)
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install XcodeGen
-        run: brew install xcodegen || true
+      - name: Select Xcode 16
+        run: |
+          ls /Applications/Xcode*.app 2>/dev/null || true
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer 2>/dev/null || sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer 2>/dev/null || sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer 2>/dev/null || sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer 2>/dev/null || true
+          xcodebuild -version; xcode-select -p
+
+      - name: Install XcodeGen & xcpretty
+        run: brew install xcodegen xcpretty 2>/dev/null || brew upgrade xcodegen 2>/dev/null || true
 
       - name: Generate Xcode project (ios-native)
         working-directory: ios-native
         run: |
-          xcodegen generate --spec project.yml || echo "xcodegen failed, trying fallback"
+          xcodegen generate --spec project.yml
           ls -la
-          cat project.yml | head -20
-
-      - name: Show Xcode version
-        run: xcodebuild -version && xcode-select -p
+          ls -la DriveMind.xcodeproj 2>/dev/null || true
+          ls -la DriveMind 2>/dev/null | head -20
 
       - name: Build .app (CODE_SIGNING_ALLOWED=NO)
         working-directory: ios-native
         run: |
           set -x
-          # Try workspace first, then project
-          if [ -f "DriveMind.xcworkspace/contents.xcworkspacedata" ]; then
-            xcodebuild -workspace DriveMind.xcworkspace -scheme DriveMind -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | xcpretty || xcodebuild -workspace DriveMind.xcworkspace -scheme DriveMind -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO build
-          else
-            xcodebuild -project DriveMind.xcodeproj -scheme DriveMind -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | xcpretty || xcodebuild -project DriveMind.xcodeproj -scheme DriveMind -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO build
-          fi
+          xcodebuild -project DriveMind.xcodeproj -scheme DriveMind -configuration Release -sdk iphoneos -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | xcpretty; code=${PIPESTATUS[0]}; echo "xcodebuild exit $code"; exit $code
 
       - name: Package unsigned IPA
         working-directory: ios-native
         run: |
           set -x
-          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "DriveMind.app" -type d | head -1)
-          if [ -z "$APP_PATH" ]; then
-            APP_PATH=$(find . -name "DriveMind.app" -type d | head -1)
+          APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/DriveMind.app"
+          if [ ! -d "$APP_PATH" ]; then
+            APP_PATH=$(find build -name "DriveMind.app" -type d | head -1)
           fi
-          # Fallback: search build folder
-          if [ -z "$APP_PATH" ]; then
-            APP_PATH=$(find build -name "DriveMind.app" -type d 2>/dev/null | head -1)
-          fi
-          echo "APP_PATH=$APP_PATH"
-          ls -la "$APP_PATH" || true
           if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
             echo "ERROR: DriveMind.app not found"
-            find . -name "*.app" | head -20
-            find ~/Library/Developer/Xcode/DerivedData -name "*.app" | head -20
+            find build -name "*.app" 2>/dev/null | head -20 || true
+            ls -R build 2>/dev/null | head -60 || true
             exit 1
           fi
+          echo "APP_PATH=$APP_PATH"
+          ls -lh "$APP_PATH" | head -20
           rm -rf Payload DriveMind-unsigned.ipa
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
           zip -r DriveMind-unsigned.ipa Payload
           ls -lh DriveMind-unsigned.ipa
-          echo "IPA created: $(pwd)/DriveMind-unsigned.ipa"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
@@ -77,14 +71,17 @@ jobs:
 
   expo-unsigned:
     name: Expo IPA (unsigned)
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
+      - name: Select Xcode 16
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer 2>/dev/null || sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer 2>/dev/null || sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer 2>/dev/null || sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer 2>/dev/null || true
+          xcodebuild -version; xcode-select -p
+
       - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
+        with: { node-version: 20, cache: npm }
 
       - name: Install deps
         run: npm ci --legacy-peer-deps
@@ -92,40 +89,44 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: Install xcpretty
+        run: gem install xcpretty --no-document 2>/dev/null || true
+
       - name: Expo prebuild (iOS)
         run: npx expo prebuild --platform ios --clean --non-interactive || npx expo prebuild --platform ios --non-interactive
 
       - name: Pod install
         working-directory: ios
-        run: pod install --repo-update || pod install
+        run: pod install --repo-update
 
       - name: Build Expo .app (unsigned)
         run: |
           set -x
-          # Find workspace/scheme
           WORKSPACE=$(ls ios/*.xcworkspace 2>/dev/null | head -1)
           PROJECT=$(ls ios/*.xcodeproj 2>/dev/null | head -1)
-          SCHEME=$(basename "$WORKSPACE" .xcworkspace 2>/dev/null || basename "$PROJECT" .xcodeproj 2>/dev/null || echo "DriveMind")
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace 2>/dev/null || basename "$PROJECT" .xcodeproj 2>/dev/null)
+          if [ -z "$SCHEME" ] || [ "$SCHEME" = ".xcworkspace" ] || [ "$SCHEME" = ".xcodeproj" ]; then SCHEME="DRIVEMIND"; fi
           echo "WORKSPACE=$WORKSPACE PROJECT=$PROJECT SCHEME=$SCHEME"
+          xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null || xcodebuild -list -project "$PROJECT" 2>/dev/null || true
           if [ -n "$WORKSPACE" ]; then
-            xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | xcpretty || xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO build
+            xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -sdk iphoneos -derivedDataPath ios/build/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | xcpretty; code=${PIPESTATUS[0]}; echo "exit $code"; exit $code
           else
-            xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | xcpretty || xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO build
+            xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -sdk iphoneos -derivedDataPath ios/build/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | xcpretty; code=${PIPESTATUS[0]}; echo "exit $code"; exit $code
           fi
 
       - name: Package Expo unsigned IPA
         run: |
           set -x
-          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "*.app" -type d | head -1)
-          if [ -z "$APP_PATH" ]; then APP_PATH=$(find ios -name "*.app" -type d | head -1); fi
-          echo "APP_PATH=$APP_PATH"
-          ls -la "$APP_PATH" || true
+          APP_PATH="ios/build/DerivedData/Build/Products/Release-iphoneos/DRIVEMIND.app"
+          if [ ! -d "$APP_PATH" ]; then APP_PATH=$(find ios/build -name "*.app" -type d | head -1); fi
           if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
             echo "No .app found"
-            find ~/Library/Developer/Xcode/DerivedData -name "*.app" | head -20
-            find ios -name "*.app" | head -20
+            find ios/build -name "*.app" 2>/dev/null | head -20 || true
+            ls -R ios/build 2>/dev/null | head -80 || true
             exit 1
           fi
+          echo "APP_PATH=$APP_PATH"
+          ls -lh "$APP_PATH" | head -10
           rm -rf Payload DriveMind-expo-unsigned.ipa
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
