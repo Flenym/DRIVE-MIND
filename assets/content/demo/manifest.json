@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "releasedAt": "2025-10-08",
+  "categories": ["B"],
+  "files": [{ "path": "questions.json", "sha256": "demo", "count": 12 }],
+  "minAppVersion": "1.0.0",
+  "source": { "name": "DEMO — не экзаменационные", "url": null }
+}

@@ -1,0 +1,39 @@
+# XcodeGen — generate ios-native/DriveMind.xcodeproj via: xcodegen generate
+# Author: Flenym
+name: DriveMind
+options:
+  bundleIdPrefix: com.drivemind
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  DriveMind:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    bundleId: com.drivemind.app
+    info:
+      path: DriveMind/Info.plist
+      properties:
+        CFBundleName: DRIVE MIND
+        CFBundleDisplayName: DRIVE MIND
+        UILaunchStoryboardName: LaunchScreen
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown]
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+    sources:
+      - DriveMind
+    settings:
+      INFOPLIST_FILE: DriveMind/Info.plist
+      SWIFT_EMIT_LOC_STRINGS: YES
+  DriveMindTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [DriveMindTests]
+    dependencies:
+      - target: DriveMind

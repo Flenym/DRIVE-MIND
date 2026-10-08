@@ -1,0 +1,11 @@
+{
+  "category": "B",
+  "totalQuestions": 20,
+  "timeMinutes": 20,
+  "maxErrors": 2,
+  "extraBlockSize": 5,
+  "extraTimeMinutes": 5,
+  "passRequiresAllExtraCorrect": true,
+  "verifiedAt": "2025-10-08",
+  "source": "Регламент МВД РФ по проведению экзаменов (2024–2025): 20 вопросов / 20 мин, ≤2 ошибки; при 1 ошибке +5 вопросов/5 мин, при 2 ошибках +10 вопросов/10 мин, без ошибок в доп. блоках."
+}
