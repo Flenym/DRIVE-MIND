@@ -17,7 +17,7 @@ func isAnswerCorrect(correct: [String], selected: [String]) -> Bool {
 private let W: [Double] = [0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61]
 
 func nextState(prev: QuestionStats?, grade: Grade, now: Date = Date()) -> QuestionStats {
-    var s = prev ?? QuestionStats(questionId: "")
+    let s = prev ?? QuestionStats(questionId: "")
     let attempts = (prev?.attempts ?? 0) + 1
     let isAgain = grade == .again
     let correct = (prev?.correct ?? 0) + (isAgain ? 0 : 1)

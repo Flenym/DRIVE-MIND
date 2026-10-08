@@ -52,6 +52,35 @@ struct QuestionRunnerView: View {
     }}
 }
 
+private struct AnswerRow: View {
+    let text: String; let sel: Bool; let isCorrect: Bool; let isWrong: Bool; let onTap: ()->Void
+    var body: some View {
+        Button(action: onTap) {
+            HStack {
+                Text(text).foregroundStyle(.white).multilineTextAlignment(.leading).font(.subheadline.weight(.semibold))
+                Spacer()
+                if isCorrect { Image(systemName:"checkmark.circle.fill").foregroundStyle(Color.dmGreen) }
+                else if isWrong { Image(systemName:"xmark.circle.fill").foregroundStyle(.red) }
+                else if sel { Image(systemName:"checkmark.circle.fill").foregroundStyle(Color.dmGreen) }
+            }
+            .padding(14)
+            .background(rowBg, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius:16).stroke(rowBorder, lineWidth: 1))
+        }.buttonStyle(.plain)
+    }
+    private var rowBg: Color {
+        if isCorrect { return Color.dmGreen.opacity(0.18) }
+        if isWrong { return Color.red.opacity(0.16) }
+        if sel { return Color.white.opacity(0.10) }
+        return Color.clear
+    }
+    private var rowBorder: Color {
+        if isCorrect { return Color.dmGreen }
+        if isWrong { return Color.red.opacity(0.7) }
+        return Color.white.opacity(0.12)
+    }
+}
+
 struct QuestionView: View {
     let question: Question; let index: Int; let total: Int; var onAnswer: ([String])->Void
     @State private var selected: Set<String> = []
@@ -64,22 +93,24 @@ struct QuestionView: View {
                 HStack{ Text("\(question.ticketId) · вопрос \(question.questionNumber)").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.6)); Spacer(); Text("\(index+1)/\(total)").font(.caption.weight(.black)).foregroundStyle(.white) }
                 ProgressView(value: Double(index+1)/Double(total)).tint(Color.dmGreen)
                 VStack(alignment:.leading, spacing:10){
-                    if let img = question.imagePath, let url = URL(string: img) { AsyncImage(url:url){$0.resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius:14))} placeholder:{ Color.white.opacity(0.06).frame(height:180).clipShape(RoundedRectangle(cornerRadius:14)) } }
+                    if let img = question.imagePath, let url = URL(string: img) {
+                        AsyncImage(url:url){ $0.resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius:14)) } placeholder:{ Color.white.opacity(0.06).frame(height:180).clipShape(RoundedRectangle(cornerRadius:14)) }
+                    }
                     Text(question.text).font(.title3.weight(.heavy)).foregroundStyle(.white)
                     Text(multi ? "Можно несколько ответов" : "Выбери один").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.55))
                 }.padding(14).glassCard()
                 ForEach(question.answers, id:\.id){ a in
-                    let sel = selected.contains(a.id); let isCorrect = revealed && question.correctAnswerIds.contains(a.id); let isWrong = revealed && sel && !question.correctAnswerIds.contains(a.id)
-                    Button{ guard !revealed else { return }; if multi { if sel {selected.remove(a.id)} else {selected.insert(a.id)} } else { selected=[a.id] } } label:{
-                        HStack{ Text(a.text).foregroundStyle(.white).multilineTextAlignment(.leading).font(.subheadline.weight(.semibold)); Spacer()
-                            if !revealed && sel { Image(systemName:"checkmark.circle.fill").foregroundStyle(Color.dmGreen) }
-                            if revealed && isCorrect { Image(systemName:"checkmark.circle.fill").foregroundStyle(Color.dmGreen) }
-                            if revealed && isWrong { Image(systemName:"xmark.circle.fill").foregroundStyle(.red) }
-                        }.padding(14).background(isCorrect ? Color.dmGreen.opacity(0.18) : isWrong ? Color.red.opacity(0.16) : sel ? Color.white.opacity(0.1) : Color.clear, in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius:16).stroke(isCorrect ? Color.dmGreen : isWrong ? Color.red.opacity(0.7) : Color.white.opacity(0.12), lineWidth: 1))
-                    }.buttonStyle(.plain)
+                    let sel = selected.contains(a.id)
+                    let isCorrect = revealed && question.correctAnswerIds.contains(a.id)
+                    let isWrong = revealed && sel && !question.correctAnswerIds.contains(a.id)
+                    AnswerRow(text: a.text, sel: sel, isCorrect: isCorrect, isWrong: isWrong) {
+                        guard !revealed else { return }
+                        if multi { if sel { selected.remove(a.id) } else { selected.insert(a.id) } } else { selected = [a.id] }
+                    }
                 }
-                if !revealed { Button{ revealed=true } label:{ Text("Ответить").bold().frame(maxWidth:.infinity).padding(.vertical,14).background(selected.isEmpty ? Color.white.opacity(0.12) : Color.dmGreen, in: Capsule()).foregroundStyle(.white) }.disabled(selected.isEmpty) }
-                else {
+                if !revealed {
+                    Button{ revealed=true } label:{ Text("Ответить").bold().frame(maxWidth:.infinity).padding(.vertical,14).background(selected.isEmpty ? Color.white.opacity(0.12) : Color.dmGreen, in: Capsule()).foregroundStyle(.white) }.disabled(selected.isEmpty)
+                } else {
                     VStack(spacing:10){
                         Text(correct ? "Верно — кайф! ✨" : "Неверно — запомним 💪").bold().foregroundStyle(correct ? Color.dmGreen : Color.red)
                         if let exp = question.explanation { Text(exp).font(.callout).foregroundStyle(.white.opacity(0.9)).padding(12).background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12)) }
