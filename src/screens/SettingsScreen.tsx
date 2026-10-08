@@ -1,19 +1,21 @@
+// Author: Flenym
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { getMeta } from '@/database/db';
 import { Button } from '@/components/Button';
-
+import { GlassCard } from '@/components/GlassCard';
+import { ScreenBg } from '@/components/ScreenBg';
+import { T } from '@/theme';
 export function SettingsScreen() {
-  const [ver, setVer] = useState<string | null>(null);
-  useEffect(() => { getMeta('content_version').then(setVer); }, []);
+  const [ver, setVer] = useState<string|null>(null);
+  useEffect(()=>{getMeta('content_version').then(setVer);},[]);
   return (
-    <View style={styles.root}>
+    <ScreenBg><View style={{ flex: 1, padding: 16, gap: 12 }}>
       <Text style={styles.h1}>Настройки</Text>
-      <Text style={styles.muted}>Версия базы: {ver ?? '—'}</Text>
-      <Text style={styles.muted}>Автообновление: проверяет manifest.json по URL из сборки. Без сети — офлайн.</Text>
-      <Button title="Обновить базу" onPress={() => Alert.alert('Обновление', 'Настройте URL манифеста в expo.extra.updateManifestUrl и реализуйте загрузку. Пока — демо-база.')} style={{ marginTop: 16 }} />
-      <Text style={styles.muted}>План 7/10/14 дней — в разработке (см. PROJECT_PLAN §12).</Text>
-    </View>
+      <GlassCard><Text style={{ color: '#fff', fontWeight: '700' }}>DRIVE MIND v1.0.0</Text><Text style={{ color: T.muted, marginTop: 4 }}>Автор и владелец: Flenym</Text><Text style={{ color: T.muted, marginTop: 2 }}>База · v{ver ?? '—'} · демо 12 вопросов</Text></GlassCard>
+      <Button title="Обновить базу" onPress={()=>Alert.alert('Обновление','Настрой expo.extra.updateManifestUrl и подключи загрузчик.')} />
+      <Text style={{ color: T.muted }}>План 7/10/14 дней — скоро.</Text>
+    </View></ScreenBg>
   );
 }
-const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: '#000', padding: 16, gap: 8 }, h1: { color: '#fff', fontSize: 20, fontWeight: '800' }, muted: { color: '#9AA0A6' } });
+const styles = StyleSheet.create({ h1: { color: '#fff', fontSize: 24, fontWeight: '900' } });

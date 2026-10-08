@@ -24,15 +24,16 @@ jobs:
           xcodebuild -version; xcode-select -p
 
       - name: Install XcodeGen & xcpretty
-        run: brew install xcodegen xcpretty 2>/dev/null || brew upgrade xcodegen 2>/dev/null || true
+        run: |
+          brew install xcodegen 2>/dev/null || brew upgrade xcodegen 2>/dev/null || true
+          gem install xcpretty --no-document 2>/dev/null || true
 
       - name: Generate Xcode project (ios-native)
         working-directory: ios-native
         run: |
-          xcodegen generate --spec project.yml
+          /opt/homebrew/bin/xcodegen generate --spec project.yml 2>/dev/null || xcodegen generate --spec project.yml
           ls -la
           ls -la DriveMind.xcodeproj 2>/dev/null || true
-          ls -la DriveMind 2>/dev/null | head -20
 
       - name: Build .app (CODE_SIGNING_ALLOWED=NO)
         working-directory: ios-native
@@ -102,12 +103,11 @@ jobs:
       - name: Build Expo .app (unsigned)
         run: |
           set -x
-          WORKSPACE=$(ls ios/*.xcworkspace 2>/dev/null | head -1)
-          PROJECT=$(ls ios/*.xcodeproj 2>/dev/null | head -1)
-          SCHEME=$(basename "$WORKSPACE" .xcworkspace 2>/dev/null || basename "$PROJECT" .xcodeproj 2>/dev/null)
-          if [ -z "$SCHEME" ] || [ "$SCHEME" = ".xcworkspace" ] || [ "$SCHEME" = ".xcodeproj" ]; then SCHEME="DRIVEMIND"; fi
+          WORKSPACE=$(ls -d ios/*.xcworkspace 2>/dev/null | head -1)
+          PROJECT=$(ls -d ios/*.xcodeproj 2>/dev/null | head -1)
+          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null | grep -A 100 "Schemes:" | tail -n +2 | head -1 | xargs 2>/dev/null || xcodebuild -list -project "$PROJECT" 2>/dev/null | grep -A 100 "Schemes:" | tail -n +2 | head -1 | xargs 2>/dev/null || echo "DRIVEMIND")
           echo "WORKSPACE=$WORKSPACE PROJECT=$PROJECT SCHEME=$SCHEME"
-          xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null || xcodebuild -list -project "$PROJECT" 2>/dev/null || true
+          xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null | head -20 || true
           if [ -n "$WORKSPACE" ]; then
             xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -sdk iphoneos -derivedDataPath ios/build/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | xcpretty; code=${PIPESTATUS[0]}; echo "exit $code"; exit $code
           else
