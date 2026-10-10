@@ -27,7 +27,9 @@ targets:
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown]
         UIStatusBarStyle: UIStatusBarStyleLightContent
     sources:
-      - DriveMind
+      - path: DriveMind
+      - path: DriveMind/Resources
+        buildPhase: resources
     settings:
       INFOPLIST_FILE: DriveMind/Info.plist
       SWIFT_EMIT_LOC_STRINGS: YES
